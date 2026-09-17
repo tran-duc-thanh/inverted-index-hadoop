@@ -1,0 +1,3 @@
+Inverted index is a popular MapReduce example
+We will build an inverted index using Hadoop
+MapReduce makes distributed processing easy

@@ -1,0 +1,3 @@
+Hello Hadoop
+Hadoop is an open source framework
+MapReduce is a programming model for Hadoop

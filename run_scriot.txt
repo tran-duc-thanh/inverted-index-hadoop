@@ -1,0 +1,39 @@
+# Yều cầu cài java, maven, docker, docker-compose trên máy Windows trước khi chạy script này
+java 8
+
+# clone repo docker-hadoop
+git clone https://github.com/big-data-europe/docker-hadoop-spark-workbench.git
+
+# Chạy docker-compose để khởi tạo cluster Hadoop
+cd docker-hadoop-spark-workbench
+docker-compose up -d
+
+# 0. Chạy lệnh build file Jar từ Windows (nếu chưa build)
+mvn clean package
+
+# 1. Copy file Jar đã build từ Windows vào thư mục /tmp của container namenode
+docker cp "D:\projects\inverted-index-hadoop\target\inverted-index-hadoop-1.0-SNAPSHOT.jar" namenode:/tmp/
+
+# 2. Copy toàn bộ thư mục input từ Windows vào container namenode
+docker cp "D:\projects\inverted-index-hadoop\input" namenode:/tmp/input-files
+
+# 3. Dọn dẹp thư mục cũ trên HDFS (để chạy lại không bị lỗi báo file đã tồn tại)
+docker exec namenode hdfs dfs -rm -r -f /raw-docs
+docker exec namenode hdfs dfs -rm -r -f /processed-txt
+docker exec namenode hdfs dfs -rm -r -f /output-inverted
+
+# 4. Tạo thư mục trên HDFS và đưa các file input lên
+docker exec namenode hdfs dfs -mkdir -p /raw-docs
+docker exec namenode bash -c "hdfs dfs -put -f /tmp/raw-docs/* /raw-docs/"
+
+# 5. Chạy lệnh thực thi Job MapReduce tền xử lý convert .doc,.docx,.pdf to .txt
+docker exec namenode hadoop jar /tmp/inverted-index-hadoop-1.0-SNAPSHOT.jar org.example.DistributedPreprocessor /raw-docs /processed-txt
+
+# 6. Kiểm tra kết quả đầu ra của Job MapReduce tiền xử lý
+docker exec namenode hdfs dfs -ls /processed-txt
+
+# 7. Chạy lệnh thực thi Job MapReduce tạo inverted index
+docker exec namenode hadoop jar /tmp/inverted-index-hadoop-1.0-SNAPSHOT.jar org.example.InvertedIndex /processed-txt /output-inverted
+
+# 8. Kiểm tra kết quả đầu ra của Job MapReduce inverted index
+docker exec namenode hdfs dfs -cat /output-inverted/part-r-00000
