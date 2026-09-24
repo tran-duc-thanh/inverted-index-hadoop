@@ -15,7 +15,7 @@ mvn clean package
 docker cp "D:\projects\inverted-index-hadoop\target\inverted-index-hadoop-1.0-SNAPSHOT.jar" namenode:/tmp/
 
 # 2. Copy toàn bộ thư mục input từ Windows vào container namenode
-docker cp "D:\projects\inverted-index-hadoop\input" namenode:/tmp/input-files
+docker cp "D:\projects\inverted-index-hadoop\raw-docs" namenode:/tmp/raw-docs
 
 # 3. Dọn dẹp thư mục cũ trên HDFS (để chạy lại không bị lỗi báo file đã tồn tại)
 docker exec namenode hdfs dfs -rm -r -f /raw-docs
