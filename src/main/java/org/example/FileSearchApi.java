@@ -10,7 +10,9 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import org.bson.Document;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -38,6 +40,7 @@ public class FileSearchApi {
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/search", new SearchHandler(collection));
+        server.createContext("/", new SearchPageHandler());
         ExecutorService executor = Executors.newFixedThreadPool(4);
         server.setExecutor(executor);
         server.start();
@@ -48,7 +51,37 @@ public class FileSearchApi {
             mongoClient.close();
         }));
 
-        System.out.println("File search API đang chạy tại http://localhost:" + port + "/search?word=hadoop");
+        System.out.println("Giao diện tìm kiếm: http://localhost:" + port + "/");
+        System.out.println("Search API: http://localhost:" + port + "/search?word=hadoop");
+    }
+
+    private static final class SearchPageHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"/".equals(exchange.getRequestURI().getPath())) {
+                sendJson(exchange, 404, "{\"error\":\"Không tìm thấy trang\"}");
+                return;
+            }
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.getResponseHeaders().set("Allow", "GET");
+                sendJson(exchange, 405, "{\"error\":\"Chỉ hỗ trợ GET\"}");
+                return;
+            }
+
+            try (InputStream page = FileSearchApi.class.getResourceAsStream("/static/index.html")) {
+                if (page == null) {
+                    sendJson(exchange, 500, "{\"error\":\"Không tìm thấy giao diện tìm kiếm\"}");
+                    return;
+                }
+                ByteArrayOutputStream content = new ByteArrayOutputStream();
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = page.read(buffer)) != -1) {
+                    content.write(buffer, 0, bytesRead);
+                }
+                sendHtml(exchange, 200, content.toByteArray());
+            }
+        }
     }
 
     private static final class SearchHandler implements HttpHandler {
@@ -143,6 +176,17 @@ public class FileSearchApi {
     private static void sendJson(HttpExchange exchange, int status, String json) throws IOException {
         byte[] body = json.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+        exchange.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
+        exchange.sendResponseHeaders(status, body.length);
+        try {
+            exchange.getResponseBody().write(body);
+        } finally {
+            exchange.close();
+        }
+    }
+
+    private static void sendHtml(HttpExchange exchange, int status, byte[] body) throws IOException {
+        exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
         exchange.getResponseHeaders().set("X-Content-Type-Options", "nosniff");
         exchange.sendResponseHeaders(status, body.length);
         try {

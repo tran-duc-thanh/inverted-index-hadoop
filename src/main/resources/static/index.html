@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tìm kiếm tài liệu</title>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            color: #172b3a;
+            background: #f3f7fa;
+            font-synthesis: none;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 64px 20px;
+            background: radial-gradient(ellipse at 50% 0%, #d9f2ef 0, #f3f7fa 48rem);
+        }
+
+        main {
+            width: min(100%, 760px);
+            margin: 0 auto;
+        }
+
+        .eyebrow {
+            margin: 0 0 12px;
+            color: #087e78;
+            font-size: 12px;
+            font-weight: 750;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0;
+            color: #102b3c;
+            font-size: clamp(32px, 6vw, 48px);
+            letter-spacing: -.045em;
+            line-height: 1.1;
+        }
+
+        .intro {
+            margin: 14px 0 30px;
+            color: #587080;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .search-card, .results-card {
+            border: 1px solid #e1eaf0;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, .94);
+            box-shadow: 0 12px 36px rgba(25, 54, 72, .07);
+        }
+
+        .search-card { padding: 22px; }
+
+        form {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            min-width: 0;
+            flex: 1;
+            border: 1px solid #cbd9e1;
+            border-radius: 11px;
+            padding: 13px 15px;
+            color: #172b3a;
+            background: #fff;
+            font: inherit;
+            font-size: 16px;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        input::placeholder { color: #8b9ca7; }
+        input:focus { border-color: #078a81; box-shadow: 0 0 0 3px #078a8122; }
+
+        button {
+            border: 0;
+            border-radius: 11px;
+            padding: 0 20px;
+            color: #fff;
+            background: #087e78;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .15s, transform .15s;
+        }
+
+        button:hover { background: #066c67; }
+        button:active { transform: translateY(1px); }
+        button:disabled { cursor: wait; opacity: .68; }
+
+        .hint {
+            margin: 11px 2px 0;
+            color: #718592;
+            font-size: 13px;
+        }
+
+        .results-card { margin-top: 18px; padding: 22px; }
+
+        .results-heading {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        h2 { margin: 0; color: #183447; font-size: 17px; }
+        #count { color: #718592; font-size: 13px; }
+
+        #message {
+            margin: 0;
+            color: #667d8b;
+            line-height: 1.5;
+        }
+
+        #message.error { color: #b33a36; }
+
+        #files {
+            display: grid;
+            gap: 9px;
+            max-height: 420px;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            list-style: none;
+        }
+
+        #files li {
+            overflow-wrap: anywhere;
+            border: 1px solid #e8eef2;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #244457;
+            background: #f9fbfc;
+        }
+
+        @media (max-width: 520px) {
+            body { padding: 38px 15px; }
+            .search-card, .results-card { padding: 17px; }
+            form { flex-direction: column; }
+            button { min-height: 46px; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <p class="eyebrow">Hadoop · Inverted Index</p>
+    <h1>Tìm kiếm tài liệu</h1>
+    <p class="intro">Nhập một từ khóa để xem các file có chứa từ đó trong chỉ mục.</p>
+
+    <section class="search-card" aria-label="Tìm kiếm file">
+        <form id="search-form">
+            <input id="word" name="word" type="search" placeholder="Ví dụ: hadoop" autocomplete="off" required autofocus>
+            <button id="search-button" type="submit">Tìm kiếm</button>
+        </form>
+        <p class="hint">Có thể nhập từ tiếng Việt có dấu. API tìm kiếm từng từ một.</p>
+    </section>
+
+    <section class="results-card" aria-labelledby="results-title">
+        <div class="results-heading">
+            <h2 id="results-title">Kết quả</h2>
+            <span id="count"></span>
+        </div>
+        <p id="message" role="status" aria-live="polite">Nhập từ khóa để bắt đầu tìm kiếm.</p>
+        <ul id="files"></ul>
+    </section>
+</main>
+
+<script>
+    const form = document.getElementById('search-form');
+    const input = document.getElementById('word');
+    const button = document.getElementById('search-button');
+    const message = document.getElementById('message');
+    const count = document.getElementById('count');
+    const files = document.getElementById('files');
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const word = input.value.trim();
+        if (!word) return;
+
+        button.disabled = true;
+        button.textContent = 'Đang tìm…';
+        message.classList.remove('error');
+        message.textContent = 'Đang tìm trong chỉ mục…';
+        count.textContent = '';
+        files.replaceChildren();
+
+        try {
+            const query = new URLSearchParams({ word });
+            const response = await fetch(`/search?${query.toString()}`);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Không thể tìm kiếm.');
+
+            if (result.files.length === 0) {
+                message.textContent = `Không tìm thấy file chứa từ “${result.word}”.`;
+                return;
+            }
+
+            message.textContent = `Các file chứa từ “${result.word}”:`;
+            count.textContent = `${result.count} file`;
+            result.files.forEach((fileName) => {
+                const item = document.createElement('li');
+                item.textContent = fileName;
+                files.appendChild(item);
+            });
+        } catch (error) {
+            message.classList.add('error');
+            message.textContent = error.message || 'Không kết nối được tới API tìm kiếm.';
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Tìm kiếm';
+        }
+    });
+</script>
+</body>
+</html>

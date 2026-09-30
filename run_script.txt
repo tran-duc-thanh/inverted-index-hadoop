@@ -33,7 +33,13 @@ docker exec namenode hadoop jar /tmp/inverted-index-hadoop-1.0-SNAPSHOT.jar org.
 docker exec namenode hdfs dfs -ls /processed-txt
 
 # 7. Chạy lệnh thực thi Job MapReduce tạo inverted index
-docker exec namenode hadoop jar /tmp/inverted-index-hadoop-1.0-SNAPSHOT.jar org.example.InvertedIndex /processed-txt /output-inverted
+docker exec namenode hadoop jar /tmp/inverted-index-hadoop-1.0-SNAPSHOT.jar org.example.InvertedIndex /processed-txt /output-inverted mongodb://host.docker.internal:27017
 
 # 8. Kiểm tra kết quả đầu ra của Job MapReduce inverted index
 docker exec namenode hdfs dfs -cat /output-inverted/part-r-00000
+
+# 9. Khởi động API và giao diện tìm kiếm
+java -cp target/inverted-index-hadoop-1.0-SNAPSHOT.jar org.example.FileSearchApi 8082
+
+# 10. Sau khi API khởi động, mở địa chỉ này trong trình duyệt
+# http://localhost:8082/
