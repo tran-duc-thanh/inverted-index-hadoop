@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.StringTokenizer;
 
 import com.mongodb.client.MongoClients;
@@ -44,7 +45,7 @@ public class InvertedIndex {
             filename.set(fileNameString);
 
             // Tách các từ trong từng dòng
-            String line = value.toString().toLowerCase();
+            String line = value.toString().toLowerCase(Locale.ROOT);
             // Thay thế các ký tự đặc biệt bằng dấu cách, chỉ giữ lại chữ cái và số
             line = line.replaceAll("[^\\p{L}\\p{N}\\s]", " ");
             
